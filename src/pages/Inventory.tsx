@@ -79,15 +79,15 @@ export default function InventoryManagement() {
     doc.save('Inventory.pdf');
   };
 
-  const sendEmail = async () => {
-    try {
-      const response = await axiosInstance.post('/send-email', { data: inventory });
-      alert('Email sent successfully!');
-    } catch (error: any) {
-      console.error('Error sending email:', error.message);
-      alert('Failed to send email.');
-    }
-  };
+  // const sendEmail = async () => {
+  //   try {
+  //     const response = await axiosInstance.post('/send-email', { data: inventory });
+  //     alert('Email sent successfully!');
+  //   } catch (error: any) {
+  //     console.error('Error sending email:', error.message);
+  //     alert('Failed to send email.');
+  //   }
+  // };
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

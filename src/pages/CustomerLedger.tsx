@@ -29,7 +29,6 @@ const CustomerLedgerPage: React.FC = () => {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [customerDetails, setCustomerDetails] = useState<Customer | null>(null);
-  const [totalBalance, setTotalBalance] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [emailModalOpen, setEmailModalOpen] = useState<boolean>(false);
