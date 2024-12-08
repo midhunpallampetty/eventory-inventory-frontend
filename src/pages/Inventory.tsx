@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import axiosInstance from '../config/axiosInstance';
 import SearchInventory from './Search'; // Adjust the import path
-
+import Navbar from './Navbar';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 interface Item {
   name: string;
   description: string;
@@ -17,12 +20,20 @@ interface Sale {
   date: string;
   saleType: 'Cash' | 'Customer';
 }
+interface Customer {
+  _id: string;
+  name: string;
+  address: string;
+  mobile: string;
+}
 
 export default function InventoryManagement() {
+  
   const [inventory, setInventory] = useState<Item[]>([]);
   const [form, setForm] = useState<Item>({ _id: '', name: '', description: '', quantity: '', price: '' });
   const [isEditing, setIsEditing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [customers, setCustomers] = useState<Customer[]>([]);
 
   const [salesModalOpen, setSalesModalOpen] = useState(false);
   const [saleForm, setSaleForm] = useState<Sale>({
@@ -32,7 +43,18 @@ export default function InventoryManagement() {
     saleType: 'Cash',
     customerName: '',
   });
-
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const { data } = await axiosInstance.get('/customers');
+        setCustomers(data);
+      } catch (error: any) {
+        console.error('Error fetching customers:', error.message);
+      }
+    };
+  
+    fetchCustomers();
+  }, []);
   const fetchInventory = async () => {
     try {
       const { data } = await axiosInstance.get('/inventory');
@@ -41,7 +63,32 @@ export default function InventoryManagement() {
       console.error('Error fetching inventory:', error.message);
     }
   };
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    doc.text('Inventory List', 14, 10);
+    const tableData = inventory.map(({ name, description, quantity, price }) => [
+      name,
+      description,
+      quantity,
+      price,
+    ]);
+    doc.autoTable({
+      head: [['Name', 'Description', 'Quantity', 'Price']],
+      body: tableData,
+    });
+    doc.save('Inventory.pdf');
+  };
 
+  const sendEmail = async () => {
+    try {
+      const response = await axiosInstance.post('/send-email', { data: inventory });
+      alert('Email sent successfully!');
+    } catch (error: any) {
+      console.error('Error sending email:', error.message);
+      alert('Failed to send email.');
+    }
+  };
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -57,7 +104,16 @@ export default function InventoryManagement() {
       console.error('Error saving inventory item:', error.message);
     }
   };
-
+  const handlePrint = () => {
+    window.print();
+  };
+  
+  const exportToExcel = () => {
+    const worksheet = XLSX.utils.json_to_sheet(inventory);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventory');
+    XLSX.writeFile(workbook, 'Inventory.xlsx');
+  };  
   const handleRecordSale = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -115,6 +171,7 @@ export default function InventoryManagement() {
 
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4 sm:px-6 lg:px-8">
+      <Navbar/>
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Inventory Management</h1>
         <SearchInventory setInventory={setInventory} fetchInventory={fetchInventory} />
@@ -131,7 +188,7 @@ export default function InventoryManagement() {
               </button>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full" id='inventory-table'>
                 <thead>
                   <tr className="bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     <th className="px-4 py-3">Name</th>
@@ -163,6 +220,33 @@ export default function InventoryManagement() {
                   ))}
                 </tbody>
               </table>
+              <div className="flex space-x-4 my-4">
+  <button
+    onClick={handlePrint}
+    className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out"
+  >
+    Print
+  </button>
+  <button
+    onClick={exportToExcel}
+    className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out"
+  >
+    Export to Excel
+  </button>
+  <button
+    onClick={exportToPDF}
+    className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out"
+  >
+    Export to PDF
+  </button>
+  <button
+    onClick={sendEmail}
+    className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out"
+  >
+    Email
+  </button>
+</div>
+
             </div>
           </div>
         </div>
@@ -283,13 +367,20 @@ export default function InventoryManagement() {
                     Customer Name (Optional)
                   </label>
                   <input
-                    type="text"
+                    list="customerNameOptions"
                     id="customerName"
                     value={saleForm.customerName}
                     onChange={(e) => setSaleForm({ ...saleForm, customerName: e.target.value })}
+                    placeholder="Select or type a customer name"
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                   />
+                  <datalist id="customerNameOptions">
+                    {customers.map((customer) => (
+                      <option key={customer._id} value={customer.name} />
+                    ))}
+                  </datalist>
                 </div>
+
                 <div className="mb-4">
                   <label htmlFor="date" className="block text-sm font-medium text-gray-700">
                     Date

@@ -4,6 +4,9 @@ import Login from "./pages/login";
 import RegisterPage from "./pages/register";
 import Inventory from "./pages/Inventory";
 import CustomerManagement from "./pages/CustomerManagement";
+import SalesReport from "./pages/SalesReport";
+import ItemsReport from "./pages/ItemsSales";
+import CustomerLedgerPage from "./pages/CustomerLedger";
 const App = () => {
   return (
     <Router>
@@ -13,6 +16,11 @@ const App = () => {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/inventory" element={<Inventory />} />
         <Route path="/customers" element={<CustomerManagement />} />
+        <Route path="/salesreport" element={<SalesReport />} />
+        <Route path="/itemreport" element={<ItemsReport />} />
+        <Route path="/customer-ledger" element={<CustomerLedgerPage />} />
+        
+
       </Routes>
     </Router>
   );
