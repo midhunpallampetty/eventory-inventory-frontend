@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Navbar from "./Navbar";
-import axiosInstance from "../config/axiosInstance"; // Adjust your axios import
-import { utils, writeFile } from "xlsx"; // For Excel export
-import jsPDF from "jspdf"; // For PDF generation
-import "jspdf-autotable";  // Import the autoTable plugin
+import axiosInstance from "../config/axiosInstance";
+import { utils, writeFile } from "xlsx";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
 interface Customer {
   _id: string;
@@ -34,6 +34,9 @@ const CustomerLedgerPage: React.FC = () => {
   const [emailModalOpen, setEmailModalOpen] = useState<boolean>(false);
   const [email, setEmail] = useState<string>("");
 
+  // Cache for ledger data
+  const ledgerCache = useRef<Record<string, { customer: Customer; transactions: Transaction[] }>>({});
+
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
@@ -53,16 +56,26 @@ const CustomerLedgerPage: React.FC = () => {
 
     if (!customerId) return;
 
+    // Check if ledger data is cached
+    if (ledgerCache.current[customerId]) {
+      const cachedData = ledgerCache.current[customerId];
+      setCustomerDetails(cachedData.customer);
+      setTransactions(cachedData.transactions);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
       const response = await axiosInstance.post("/customer/ledger", { customerId });
-      const { customer, transactions, totalBalance } = response.data;
+      const { customer, transactions } = response.data;
+
+      // Cache the response
+      ledgerCache.current[customerId] = { customer, transactions };
 
       setCustomerDetails(customer);
       setTransactions(transactions);
-      setTotalBalance(totalBalance);
     } catch (err: any) {
       console.error("Error fetching ledger details:", err.message);
       setError("Failed to fetch ledger details. Please try again.");
@@ -91,8 +104,7 @@ const CustomerLedgerPage: React.FC = () => {
     const doc = new jsPDF();
     doc.text("Customer Ledger", 14, 10);
     doc.text(`Customer: ${customerDetails?.name}`, 14, 20);
-  
-    // Add table using autoTable plugin
+
     doc.autoTable({
       startY: 30,
       head: [["Date", "Item", "Quantity", "Price", "Sale Type"]],
@@ -120,33 +132,30 @@ const CustomerLedgerPage: React.FC = () => {
   // Close Email Modal
   const closeEmailModal = () => {
     setEmailModalOpen(false);
-    setEmail(""); // Clear the email input
+    setEmail("");
   };
 
   // Send the ledger email
- // Send the ledger email
-const emailLedger = async () => {
+  const emailLedger = async () => {
     if (!email) {
       alert("Please provide an email address.");
       return;
     }
-  
-    // Prepare the data to be sent along with the email
+
     const ledgerData = {
       customerId: selectedCustomerId,
       email,
-      ledgerDetails:transactions,  // Include transactions in the email data
+      ledgerDetails: transactions,
     };
-  
+
     try {
-      await axiosInstance.post("/send-ledger-email", ledgerData); // Send data along with email
+      await axiosInstance.post("/send-ledger-email", ledgerData);
       alert("Ledger emailed successfully.");
       closeEmailModal();
     } catch (err) {
       alert("Failed to email ledger. Please try again.");
     }
   };
-  
 
   return (
     <div className="p-6 space-y-6">
